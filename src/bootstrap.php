@@ -2,26 +2,7 @@
 
 use Keulinho\ShopwarePolyfill\ClassAliasLoader;
 
-ClassAliasLoader::register(
-    'Shopware\\Administration\\Controller\\NotificationController',
-    'Shopware\\Core\\Framework\\Notification\\Api\\NotificationController',
-);
-ClassAliasLoader::register(
-    'Shopware\\Administration\\Notification\\NotificationCollection',
-    'Shopware\\Core\\Framework\\Notification\\NotificationCollection',
-);
-ClassAliasLoader::register(
-    'Shopware\\Administration\\Notification\\NotificationDefinition',
-    'Shopware\\Core\\Framework\\Notification\\NotificationDefinition',
-);
-ClassAliasLoader::register(
-    'Shopware\\Administration\\Notification\\NotificationEntity',
-    'Shopware\\Core\\Framework\\Notification\\NotificationEntity',
-);
-ClassAliasLoader::register(
-    'Shopware\\Elasticsearch\\Product\\SearchConfigLoader',
-    'Shopware\\Core\\Framework\\DataAbstractionLayer\\Search\\SearchConfigLoader',
-);
+ClassAliasLoader::registerAll();
 
 if (
     !class_exists('Shopware\\Core\\Content\\ProductStream\\Service\\AbstractProductStreamBuilder')

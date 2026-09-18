@@ -12,7 +12,9 @@ final class MovedServiceAliasPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('Shopware\\Administration\\Controller\\NotificationController')->setPublic(true);
+        $container->register('Shopware\\Administration\\Notification\\NotificationCollection');
         $container->register('Shopware\\Administration\\Notification\\NotificationDefinition');
+        $container->register('Shopware\\Administration\\Notification\\NotificationEntity');
         $container->register('Shopware\\Elasticsearch\\Product\\SearchConfigLoader');
 
         (new MovedServiceAliasPass())->process($container);
@@ -28,6 +30,9 @@ final class MovedServiceAliasPassTest extends TestCase
         $searchConfigAlias = $container->getAlias('Shopware\\Core\\Framework\\DataAbstractionLayer\\Search\\SearchConfigLoader');
         static::assertSame('Shopware\\Elasticsearch\\Product\\SearchConfigLoader', (string) $searchConfigAlias);
         static::assertFalse($searchConfigAlias->isPublic());
+
+        static::assertFalse($container->hasAlias('Shopware\\Core\\Framework\\Notification\\NotificationCollection'));
+        static::assertFalse($container->hasAlias('Shopware\\Core\\Framework\\Notification\\NotificationEntity'));
     }
 
     public function testKeepsExistingCanonicalService(): void
