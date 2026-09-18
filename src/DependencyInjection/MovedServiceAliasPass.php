@@ -10,18 +10,14 @@ final class MovedServiceAliasPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void
     {
-        foreach (ClassAliasLoader::ALIASES as $legacyId => $config) {
-            if (
-                $config['servicePublic'] === null
-                || $container->has($config['canonical'])
-                || !$container->has($legacyId)
-            ) {
+        foreach (ClassAliasLoader::ALIASES as $legacyId => $canonicalId) {
+            if ($container->has($canonicalId) || !$container->has($legacyId)) {
                 continue;
             }
 
             $container
-                ->setAlias($config['canonical'], $legacyId)
-                ->setPublic($config['servicePublic']);
+                ->setAlias($canonicalId, $legacyId)
+                ->setPublic($container->findDefinition($legacyId)->isPublic());
         }
     }
 }

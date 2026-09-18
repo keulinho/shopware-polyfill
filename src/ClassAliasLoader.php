@@ -4,38 +4,19 @@ namespace Keulinho\ShopwarePolyfill;
 
 final class ClassAliasLoader
 {
-    /**
-     * A null servicePublic value means that the class has no service alias.
-     *
-     * @var array<string, array{canonical: string, servicePublic: bool|null}>
-     */
+    /** @var array<string, string> */
     public const ALIASES = [
-        'Shopware\\Administration\\Controller\\NotificationController' => [
-            'canonical' => 'Shopware\\Core\\Framework\\Notification\\Api\\NotificationController',
-            'servicePublic' => true,
-        ],
-        'Shopware\\Administration\\Notification\\NotificationCollection' => [
-            'canonical' => 'Shopware\\Core\\Framework\\Notification\\NotificationCollection',
-            'servicePublic' => null,
-        ],
-        'Shopware\\Administration\\Notification\\NotificationDefinition' => [
-            'canonical' => 'Shopware\\Core\\Framework\\Notification\\NotificationDefinition',
-            'servicePublic' => false,
-        ],
-        'Shopware\\Administration\\Notification\\NotificationEntity' => [
-            'canonical' => 'Shopware\\Core\\Framework\\Notification\\NotificationEntity',
-            'servicePublic' => null,
-        ],
-        'Shopware\\Elasticsearch\\Product\\SearchConfigLoader' => [
-            'canonical' => 'Shopware\\Core\\Framework\\DataAbstractionLayer\\Search\\SearchConfigLoader',
-            'servicePublic' => false,
-        ],
+        'Shopware\\Administration\\Controller\\NotificationController' => 'Shopware\\Core\\Framework\\Notification\\Api\\NotificationController',
+        'Shopware\\Administration\\Notification\\NotificationCollection' => 'Shopware\\Core\\Framework\\Notification\\NotificationCollection',
+        'Shopware\\Administration\\Notification\\NotificationDefinition' => 'Shopware\\Core\\Framework\\Notification\\NotificationDefinition',
+        'Shopware\\Administration\\Notification\\NotificationEntity' => 'Shopware\\Core\\Framework\\Notification\\NotificationEntity',
+        'Shopware\\Elasticsearch\\Product\\SearchConfigLoader' => 'Shopware\\Core\\Framework\\DataAbstractionLayer\\Search\\SearchConfigLoader',
     ];
 
     public static function registerAll(): void
     {
-        foreach (self::ALIASES as $legacyClass => $config) {
-            self::register($legacyClass, $config['canonical']);
+        foreach (self::ALIASES as $legacyClass => $canonicalClass) {
+            self::register($legacyClass, $canonicalClass);
         }
     }
 
