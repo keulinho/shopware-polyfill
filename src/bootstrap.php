@@ -17,3 +17,7 @@ if (
 ) {
     require __DIR__ . '/Polyfill/AbstractNumberRangeValueGenerator.php';
 }
+
+if (!interface_exists('Shopware\\Core\\Framework\\MessageQueue\\ScheduledTask\\DynamicallyScheduledTaskHandler')) {
+    require __DIR__ . '/Polyfill/DynamicallyScheduledTaskHandler.php';
+}
