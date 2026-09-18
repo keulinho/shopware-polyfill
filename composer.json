@@ -1,0 +1,38 @@
+{
+    "name": "keulinho/shopware-polyfill",
+    "description": "Experimental forward-compatibility polyfills for Shopware extensions",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "shopware/core": "^6.6 || ^6.7 || ^6.8",
+        "symfony/dependency-injection": "^6.4 || ^7.0",
+        "symfony/http-kernel": "^6.4 || ^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Keulinho\\ShopwarePolyfill\\": "src/"
+        },
+        "files": [
+            "src/bootstrap.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Keulinho\\ShopwarePolyfill\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true,
+            "symfony/runtime": true
+        },
+        "sort-packages": true
+    }
+}
