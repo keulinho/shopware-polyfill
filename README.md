@@ -58,7 +58,41 @@ For product streams, the inherited `buildFilters()` compatibility method creates
 
 The number-range replacement adds a genuinely new operation, `previewPatternByNumberRangeId()`. Implementations extending the polyfilled abstract class must provide that operation themselves.
 
-These are provider-side bridges. They do not make an existing older Shopware core implementation an instance of a newly introduced abstract class. Consumers that inject the replacement abstract type while running an older core implementation still need a case-specific adapter.
+These provider-side bridges do not make an existing older Shopware core implementation an instance of a newly introduced abstract class. Consumers can support both generations with a union type and select the available API at runtime. An adapter is only needed when downstream code must receive one uniform new-contract type.
+
+### Consuming product stream builders across versions
+
+A consumer can accept both the replacement abstract class and the deprecated interface:
+
+```php
+use Shopware\Core\Content\ProductStream\Service\AbstractProductStreamBuilder;
+use Shopware\Core\Content\ProductStream\Service\ProductStreamBuilderInterface;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+
+final class ProductStreamConsumer
+{
+    public function __construct(
+        private readonly AbstractProductStreamBuilder|ProductStreamBuilderInterface $builder,
+    ) {
+    }
+
+    public function enrichCriteria(Criteria $criteria, string $streamId, Context $context): void
+    {
+        if ($this->builder instanceof AbstractProductStreamBuilder) {
+            $this->builder->enrichCriteria($criteria, $streamId, $context);
+
+            return;
+        }
+
+        $criteria->addFilter(...$this->builder->buildFilters($streamId, $context));
+    }
+}
+```
+
+Check for `AbstractProductStreamBuilder` first because a new implementation may also satisfy the deprecated interface. PHP accepts a union containing a class or interface that no longer exists, so this remains valid after `ProductStreamBuilderInterface` is removed: an object matching `AbstractProductStreamBuilder` satisfies the union and an `instanceof ProductStreamBuilderInterface` check evaluates to `false`.
+
+Wire the constructor argument explicitly to the concrete product stream builder service, or to a decorator's `.inner` service. Symfony cannot reliably choose a service from this union through autowiring alone. Static analysers running only against a Shopware version where the interface has already been removed may additionally need a compatibility stub or configuration that knows the legacy symbol.
 
 `AbstractNumberRangeValueGenerator` became native in Shopware 6.7.12 and `AbstractProductStreamBuilder` in 6.7.13. Composer cannot modify those native classes after they exist, so their inheritance relationships are determined by the installed Shopware patch release. The Product Stream compatibility bridge is proposed in [shopware/shopware#20607](https://github.com/shopware/shopware/pull/20607); until that change is present, the native abstract class does not implement its predecessor interface.
 
