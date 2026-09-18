@@ -4,6 +4,20 @@ Experimental forward-compatibility polyfills for Shopware extensions that want t
 
 This repository is a draft. It has no stable release or backward-compatibility promise yet.
 
+## Scope
+
+This package removes PHP and Symfony integration barriers that otherwise prevent one plugin codebase from naming a replacement API across supported Shopware versions. Its intended building blocks are:
+
+- identity-preserving PHP class aliases and matching dependency-injection aliases;
+- conditional declarations for replacement interfaces, abstract classes, and related value types that do not exist on older versions;
+- provider-side inheritance bridges where a replacement abstract class can also satisfy the legacy interface without changing its meaning.
+
+Ordinary method migrations do not normally require a package-level compatibility trait. A plugin can declare the old and new methods in parallel: older Shopware calls the legacy method, newer Shopware calls the replacement, and an additional legacy method remains valid after the parent method is removed. The package supplies a missing parent class or interface when PHP would otherwise fail to load that plugin class, but the plugin owns the two method implementations and any shared internal logic.
+
+The project therefore does not generally automate behavioral forwarding with traits. Such forwarding often requires plugin-specific decisions or unavailable information, such as choosing a locale, mapping a number-range type to an ID, or translating response semantics. A trait is only a candidate when the conversion is universal, lossless, and carries no behavioral policy.
+
+The package also does not make an existing older core object an instance of a newly introduced abstract class, add methods to loaded core classes, or make old core dispatch new events. Those cases require an explicit consumer adapter or parallel old/new integration inside the plugin.
+
 ## Installation
 
 ```bash
