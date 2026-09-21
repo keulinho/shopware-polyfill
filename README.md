@@ -43,6 +43,8 @@ Shopware deduplicates additional bundles by bundle name. If several active plugi
 
 The bundle is needed for dependency-injection aliases. PHP class aliases, replacement abstract classes, and replacement interfaces are loaded automatically through Composer.
 
+The bundle also registers route polyfills. It must therefore be registered even when a plugin only uses one of the HTTP route compatibility layers described below.
+
 ## Moved classes
 
 On a Shopware version where the canonical class does not exist but the legacy class does, the package creates the canonical name as a `class_alias()` of the legacy class:
@@ -176,6 +178,44 @@ final class PluginScheduledTaskHandler extends ScheduledTaskHandler implements D
 Older Shopware does not know the interface and continues to invoke `rescheduleTask()`. Shopware 6.7.13 and newer check the interface first, call `getNextExecutionTime()`, and return without invoking the legacy override. Declaring both methods therefore does not trigger the runtime deprecation in a correctly registered `messenger.message_handler` service.
 
 The polyfill intentionally does not include a trait: the old method remains the plugin's existing persistence implementation, while the new method only calculates and returns the next execution time.
+
+## HTTP routes
+
+The bundle backports selected route declarations when the installed Shopware version does not provide them yet. It always routes to the existing Shopware controller service, preserving decorators and the existing request and response behavior.
+
+### Additional HTTP methods
+
+The following methods are added to the existing routes:
+
+| Method | Path |
+|---|---|
+| `PATCH` | `/api/_info/config-me` |
+| `GET` | `/store-api/media` |
+| `GET` | `/store-api/product/{productId}/cross-selling` |
+| `GET` | `/store-api/product/{productId}` |
+| `GET` | `/store-api/product/{productId}/find-variant` |
+| `GET` | `/store-api/product-listing/{categoryId}` |
+| `GET` | `/store-api/product/{productId}/reviews` |
+| `GET` | `/store-api/search` |
+| `GET` | `/store-api/search-suggest` |
+| `GET` | `/store-api/landing-page/{landingPageId}` |
+
+The polyfill reuses the native route name, controller, scope, authentication, entity, requirements, and options. If the installed Shopware version already allows the method, no overwrite is registered.
+
+The Store API declarations only backport support for making the request with `GET`. They do not backport the HTTP caching infrastructure or caching behavior introduced alongside those methods in later Shopware versions.
+
+### Storefront path aliases
+
+On versions that still expose the Storefront header and footer under `/header` and `/footer`, the bundle additionally accepts the newer paths:
+
+| New path | Existing controller |
+|---|---|
+| `/_esi/global/header` | `NavigationController::header()` |
+| `/_esi/global/footer` | `NavigationController::footer()` |
+
+The aliases copy the native route's methods, defaults, requirements, and options. They are not registered once Shopware provides the new paths itself.
+
+Route polyfills are limited to declarations where the existing controller accepts the same input and returns the same response. Renames that require payload conversion, different identifiers, new permissions, or different response semantics are intentionally not included.
 
 ## Supported versions
 
