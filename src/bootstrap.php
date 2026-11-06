@@ -4,6 +4,14 @@ use Keulinho\ShopwarePolyfill\ClassAliasLoader;
 
 ClassAliasLoader::registerAll();
 
+if (!class_exists('Shopware\\Core\\Framework\\Event\\SensitiveMail')) {
+    require __DIR__ . '/Polyfill/SensitiveMail.php';
+}
+
+if (!class_exists('Shopware\\Core\\Framework\\Webhook\\NotHookable')) {
+    require __DIR__ . '/Polyfill/NotHookable.php';
+}
+
 if (
     !class_exists('Shopware\\Core\\Content\\ProductStream\\Service\\AbstractProductStreamBuilder')
     && interface_exists('Shopware\\Core\\Content\\ProductStream\\Service\\ProductStreamBuilderInterface')

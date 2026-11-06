@@ -4,6 +4,8 @@ Experimental forward-compatibility polyfills for Shopware extensions that want t
 
 This repository is a draft. It has no stable release or backward-compatibility promise yet.
 
+The [revised RFC](docs/rfc.md) explains the proposed scope, current compatibility gaps, and open contract questions.
+
 ## Scope
 
 This package removes PHP and Symfony integration barriers that otherwise prevent one plugin codebase from naming a replacement API across supported Shopware versions. Its intended building blocks are:
@@ -11,6 +13,7 @@ This package removes PHP and Symfony integration barriers that otherwise prevent
 - identity-preserving PHP class aliases and matching dependency-injection aliases;
 - conditional declarations for replacement interfaces, abstract classes, and related value types that do not exist on older versions;
 - provider-side inheritance bridges where a replacement abstract class can also satisfy the legacy interface without changing its meaning.
+- extension-facing marker attribute declarations, with the native definitions taking precedence.
 
 Ordinary method migrations do not normally require a package-level compatibility trait. A plugin can declare the old and new methods in parallel: older Shopware calls the legacy method, newer Shopware calls the replacement, and an additional legacy method remains valid after the parent method is removed. The package supplies a missing parent class or interface when PHP would otherwise fail to load that plugin class, but the plugin owns the two method implementations and any shared internal logic.
 
@@ -24,7 +27,7 @@ The package also does not make an existing older core object an instance of a ne
 composer require keulinho/shopware-polyfill:dev-main
 ```
 
-Register the bundle from every plugin that requires the package:
+Register the bundle from every plugin that needs service aliases or HTTP route polyfills:
 
 ```php
 use Keulinho\ShopwarePolyfill\ShopwarePolyfillBundle;
@@ -41,7 +44,8 @@ public function getAdditionalBundles(AdditionalBundleParameters $parameters): ar
 
 Shopware deduplicates additional bundles by bundle name. If several active plugins return `ShopwarePolyfillBundle`, Symfony registers it only once.
 
-The bundle is needed for dependency-injection aliases. PHP class aliases, replacement abstract classes, and replacement interfaces are loaded automatically through Composer.
+The bundle is needed for dependency-injection aliases.
+PHP class aliases, replacement abstract classes, replacement interfaces, and metadata attributes are loaded automatically through Composer.
 
 The bundle also registers route polyfills. It must therefore be registered even when a plugin only uses one of the HTTP route compatibility layers described below.
 
@@ -123,7 +127,10 @@ Check for `AbstractProductStreamBuilder` first because a new implementation may 
 
 Wire the constructor argument explicitly to the concrete product stream builder service, or to a decorator's `.inner` service. Symfony cannot reliably choose a service from this union through autowiring alone. Static analysers running only against a Shopware version where the interface has already been removed may additionally need a compatibility stub or configuration that knows the legacy symbol.
 
-`AbstractProductStreamBuilder` became native in Shopware 6.7.12. Composer cannot modify the native class after it exists, so its inheritance relationship is determined by the installed Shopware patch release. The compatibility bridge is proposed in [shopware/shopware#20607](https://github.com/shopware/shopware/pull/20607); until that change is present, the native abstract class does not implement its predecessor interface.
+`AbstractProductStreamBuilder` became native in Shopware 6.7.12.
+Composer cannot modify the native class after it exists, so its inheritance relationship is determined by the installed Shopware patch release.
+The compatibility bridge from [shopware/shopware#20607](https://github.com/shopware/shopware/pull/20607) is merged and first present in 6.7.16.0.
+Native versions from 6.7.12 through 6.7.15 lack that bridge; the polyfill cannot repair their inheritance.
 
 ### NumberRangeValueGeneratorInterface to AbstractNumberRangeValueGenerator
 
@@ -179,6 +186,82 @@ Older Shopware does not know the interface and continues to invoke `rescheduleTa
 
 The polyfill intentionally does not include a trait: the old method remains the plugin's existing persistence implementation, while the new method only calculates and returns the next execution time.
 
+## Extension marker attributes
+
+The package conditionally supplies [`Shopware\Core\Framework\Webhook\NotHookable`](https://github.com/shopware/shopware/blob/v6.7.14.1/src/Core/Framework/Webhook/NotHookable.php), introduced in 6.7.14.1, and `Shopware\Core\Framework\Event\SensitiveMail` from the merged, unreleased native implementation.
+`NotHookable` marks extension flow events that should be excluded from webhook delivery.
+`SensitiveMail` marks mail events whose logs should contain metadata only.
+Both are class-level markers without constructor arguments.
+Composer loads them without bundle registration, and native definitions always win.
+
+```php
+use Shopware\Core\Framework\Webhook\NotHookable;
+use Shopware\Core\Framework\Event\FlowEventAware;
+
+#[NotHookable]
+final class PluginFlowEvent implements FlowEventAware
+{
+    // Existing event implementation.
+}
+```
+
+This is a declaration polyfill only.
+Older core without `NotHookablePolicy` ignores the marker and can still deliver the event to webhooks.
+An extension that requires webhook exclusion must require a core version with the policy or provide its own tested enforcement on older versions.
+The attribute class alone is not a security fix.
+PHP already permits unresolved attribute names on declarations; the polyfill additionally makes class lookup and reflection instantiation work.
+
+### Attribute review since 6.7.0.0
+
+| Attribute | First available | Assessment |
+|---|---|---|
+| `NotHookable` | 6.7.14.1 | Extension-facing marker; declaration supplied, webhook policy not backported. |
+| `SensitiveMail` | Merged on trunk; absent from published 6.7 tags through 6.7.16.0 | Declaration supplied from the merged implementation; mail-log policy not backported. |
+| `IsFlowEventAware` | Already in 6.7.0.0 | Outside the requested set of newer attributes. |
+| DAL `ReverseInherited` | 6.7.7.0 | Requires attribute entity compiler support. |
+| DAL `SearchRanking`, `Password`, `ListField` | 6.7.9.0 | Requires ranking, serialization, or field-type support. |
+| MCP `McpToolRequires`, `McpToolDependsOn` | 6.7.11.0 | Designed for tools, including extension tools, but depends on the experimental MCP integration. |
+| MCP `McpToolGroup` | 6.7.14.0 | Extension tool metadata; older MCP versions do not apply grouping. |
+| BC-change attributes | 6.7.14.0 onward | Internal core planning metadata, not intended for extension use; excluded. |
+
+`SensitiveMail` is documented for extension events implementing `MailAware` in the [upcoming release notes](https://github.com/shopware/shopware/blob/trunk/RELEASE_INFO-6.7.md).
+Its consumer carries sensitivity through stored flows and mail logging.
+Supplying only the marker on older core does not redact logs or template sample data.
+This experimental polyfill matches [the merged implementation](https://github.com/shopware/shopware/blob/e41e3f38b5d93b56534a8a8196bff32abd2250d8/src/Core/Framework/Event/SensitiveMail.php); its upstream contract may still change before release.
+
+```php
+use Shopware\Core\Framework\Event\SensitiveMail;
+use Shopware\Core\Framework\Event\MailAware;
+
+#[SensitiveMail]
+final class PluginMailEvent implements MailAware
+{
+    // Existing mail event implementation.
+}
+```
+
+### MCP declarations as a follow-up
+
+It is reasonable to conditionally supply Shopware's three MCP attributes and declaration-only interfaces whose method types exist on older core.
+This would allow extensions to carry MCP declarations on versions where no MCP consumer runs.
+A tool service tagged `shopware.mcp.tool` is not executed merely because the tag exists.
+An unused private service can be removed by Symfony when no MCP integration references it.
+
+This does not make arbitrary MCP services safe to register unconditionally:
+
+- Missing parent classes or implemented interfaces prevent PHP from loading a tool class.
+- A polyfilled `McpContextProviderInterface` does not create a context-provider service for constructor injection.
+- The usual `McpToolResponse` parent is executable code, not metadata; it needs a separate compatibility design.
+- `Mcp\Capability\Attribute\McpTool` and related SDK types belong to `mcp/sdk`, not Shopware.
+  Use the real SDK dependency when those types must be instantiated; this package should not copy SDK contracts.
+- Partial native MCP implementations still consume the declarations they know, so missing dependency or grouping support cannot always be treated as inert.
+
+The target is one extension implementation with inactive MCP integration on older core.
+It needs class-loading and DI-compilation tests on that older core, plus native discovery and invocation tests on newer core.
+These MCP polyfills are not implemented in this draft yet.
+`McpToolRequires` documents required privileges; it does not enforce them.
+Existing DAL attributes also gained options during 6.7; a polyfill cannot add arguments to an already defined native constructor.
+
 ## HTTP routes
 
 The bundle backports selected route declarations when the installed Shopware version does not provide them yet. It always routes to the existing Shopware controller service, preserving decorators and the existing request and response behavior.
@@ -226,3 +309,7 @@ The current draft targets Shopware 6.6, 6.7, and 6.8. Every polyfill is conditio
 ```bash
 composer test
 ```
+
+The marker regression tests cover reflection, class targets, and bootstrap idempotence.
+Run them with and without native `NotHookable` and `SensitiveMail` definitions to check native precedence.
+Source-snapshot reflection checks do not replace full Shopware integration testing across the supported versions.
