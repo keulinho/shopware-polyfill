@@ -240,27 +240,36 @@ final class PluginMailEvent implements MailAware
 }
 ```
 
-### MCP declarations as a follow-up
+## Inactive MCP declarations
 
-It is reasonable to conditionally supply Shopware's three MCP attributes and declaration-only interfaces whose method types exist on older core.
-This would allow extensions to carry MCP declarations on versions where no MCP consumer runs.
-A tool service tagged `shopware.mcp.tool` is not executed merely because the tag exists.
-An unused private service can be removed by Symfony when no MCP integration references it.
+The package supplies these declarations when their native symbols are absent:
 
-This does not make arbitrary MCP services safe to register unconditionally:
+- `Shopware\Core\Framework\Mcp\Attribute\McpToolDependsOn`
+- `Shopware\Core\Framework\Mcp\Attribute\McpToolGroup`
+- `Shopware\Core\Framework\Mcp\Attribute\McpToolRequires`
+- `Shopware\Core\Framework\Mcp\Context\McpContextProviderInterface`
+- `Shopware\Core\Framework\Mcp\Tool\McpToolResponse`
 
-- Missing parent classes or implemented interfaces prevent PHP from loading a tool class.
-- A polyfilled `McpContextProviderInterface` does not create a context-provider service for constructor injection.
-- The usual `McpToolResponse` parent is executable code, not metadata; it needs a separate compatibility design.
-- `Mcp\Capability\Attribute\McpTool` and related SDK types belong to `mcp/sdk`, not Shopware.
-  Use the real SDK dependency when those types must be instantiated; this package should not copy SDK contracts.
-- Partial native MCP implementations still consume the declarations they know, so missing dependency or grouping support cannot always be treated as inert.
+The attributes preserve their native constructor data, targets, and repeatability.
+The interface and abstract base class are deliberately empty.
+They allow a plugin's `implements` and `extends` declarations to load without copying an evolving runtime contract.
+Composer loads all five symbols without bundle registration, and each native definition takes precedence independently.
 
-The target is one extension implementation with inactive MCP integration on older core.
-It needs class-loading and DI-compilation tests on that older core, plus native discovery and invocation tests on newer core.
-These MCP polyfills are not implemented in this draft yet.
-`McpToolRequires` documents required privileges; it does not enforce them.
-Existing DAL attributes also gained options during 6.7; a polyfill cannot add arguments to an already defined native constructor.
+On older core, a `shopware.mcp.tool` tag has no MCP consumer.
+Registering it does not invoke the tool.
+The stubs provide no response helpers or context-provider service; tool execution belongs to the native MCP installation.
+A constructor that requires an unavailable MCP service can still break container compilation.
+Use optional injection for an inactive integration, or register that service only where its dependencies exist.
+
+`Mcp\Capability\Attribute\McpTool` and related SDK types belong to `mcp/sdk`.
+They are not copied here.
+PHP permits unresolved attribute names when declaring the tool, but instantiating SDK attributes or argument value objects requires the SDK.
+Use the real SDK dependency when those types are needed.
+
+These polyfills do not backport the MCP server, ACL enforcement, tool discovery, grouping, or dependency expansion.
+Partial native implementations still consume the metadata they know.
+Test plugin execution against the native versions you support; empty declarations do not validate future native method signatures.
+`McpToolRequires` documents privileges and does not enforce them.
 
 ## HTTP routes
 

@@ -4,6 +4,21 @@ use Keulinho\ShopwarePolyfill\ClassAliasLoader;
 
 ClassAliasLoader::registerAll();
 
+foreach (['McpToolDependsOn', 'McpToolGroup', 'McpToolRequires'] as $name) {
+    if (!class_exists('Shopware\\Core\\Framework\\Mcp\\Attribute\\' . $name)) {
+        require __DIR__ . '/Polyfill/Mcp/' . $name . '.php';
+    }
+}
+unset($name);
+
+if (!interface_exists('Shopware\\Core\\Framework\\Mcp\\Context\\McpContextProviderInterface')) {
+    require __DIR__ . '/Polyfill/Mcp/McpContextProviderInterface.php';
+}
+
+if (!class_exists('Shopware\\Core\\Framework\\Mcp\\Tool\\McpToolResponse')) {
+    require __DIR__ . '/Polyfill/Mcp/McpToolResponse.php';
+}
+
 if (!class_exists('Shopware\\Core\\Framework\\Event\\SensitiveMail')) {
     require __DIR__ . '/Polyfill/SensitiveMail.php';
 }
