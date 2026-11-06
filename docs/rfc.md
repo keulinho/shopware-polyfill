@@ -113,21 +113,22 @@ The demo leaves these broader runtime integrations out.
 
 ### Inactive MCP extensions on older core
 
-An extension should be able to ship its MCP integration in one implementation even on core versions that do not expose MCP.
-Conditional MCP attributes and compatible interfaces can remove declaration barriers for that use case.
-Without an MCP consumer, an ordinary service's `shopware.mcp.tool` tag does not invoke it; an unused private tool can be removed from the compiled container.
+An extension should be able to ship one MCP implementation even on core versions that do not expose MCP.
+The demo supplies the three Shopware MCP attributes, plus empty declarations for `McpContextProviderInterface` and the abstract `McpToolResponse` base.
+Each native symbol takes precedence independently.
 
-This is a useful direction, but attributes and interfaces alone do not guarantee unconditional registration:
+The empty interface and base class satisfy PHP's declaration-level requirements without copying evolving native method signatures or helpers.
+On older core, the tool can be loaded and registered without an MCP consumer invoking it.
+The stubs intentionally provide no runtime implementation.
 
-- PHP still needs every parent class and implemented interface when loading the tool.
-- A polyfilled `McpContextProviderInterface` does not provide the native service an autowired constructor may require.
-- `McpToolResponse`, the usual tool parent, has executable response and error handling; it is not an empty metadata contract.
-- The SDK's `McpTool` attribute and related value types should come from the real `mcp/sdk` dependency rather than copied SDK polyfills.
-- Versions with partial native MCP support can already consume some metadata and ignore other metadata, so their integration behavior needs separate validation.
+The remaining compatibility boundary is the plugin's own dependencies.
+A constructor requiring an absent MCP service can still fail container compilation.
+Optional injection or conditional service registration handles that case.
+The SDK's `McpTool` attribute and related value objects should come from `mcp/sdk` whenever they need to be instantiated.
 
-The smallest useful follow-up would cover the three Shopware MCP attributes and selected compatible interfaces, then prove one representative extension compiles on old core and is discovered and callable on native MCP core.
-Any required base-class compatibility or service-registration guard must be part of that proof.
-The current demo does not yet include this MCP layer.
+Tests cover attribute metadata, provider and tool class loading, DI compilation without an MCP runtime, and native-definition precedence.
+Native MCP discovery and invocation still need full-version integration testing.
+Empty stubs make inactive code loadable; they do not guarantee compatibility with future native APIs.
 
 ## Installation and activation
 
